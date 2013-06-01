@@ -39,9 +39,7 @@ printUsage()
 
 isBlockDevice()
 {
-	local blockDevice="$1"
-	blockCheck=$(file "$blockDevice" | grep "block special")
-	if [ $? = "0" ]; then
+	if [ -b "$1" ]; then
 		true
 	else
 		false
@@ -79,6 +77,8 @@ copyBlockDevice()
 	echo
 
 	pv -tpreb "$blockDevice" | dd bs=1024 of="${destinationPath}/${backupDate}-raspberrypi.img"
+	echo "Wrote file: ${destinationPath}/${backupDate}-raspberrypi.img"
+	echo
 }
 
 
