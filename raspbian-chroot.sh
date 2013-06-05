@@ -127,7 +127,7 @@ chRootImage()
 		cp "$binFormatFile" "${mountPath}/usr/bin/"
 		cp "/usr/bin/qemu-arm" "${mountPath}/usr/bin/"
 	else
-		echo "Failed setting Binary format for architecture"
+		exitWithMessage "Failed setting Binary format for architecture, cannot chroot"
 	fi
 
 	chroot "$mountPath"
