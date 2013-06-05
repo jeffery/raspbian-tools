@@ -110,10 +110,6 @@ chRootImage()
 	# makes networking actually work
 	cp /etc/resolv.conf "$mountPath/etc/resolv.conf"
 
-	[ -d /proc/sys/fs/binfmt_misc ] || modprobe binfmt_misc
-	[ -f /proc/sys/fs/binfmt_misc/register ] || mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
-
-
 	if isArmInterpreterInstalled; then
 		if ! isArmInterpreterEnabled; then
 			echo 1 >/proc/sys/fs/binfmt_misc/arm
