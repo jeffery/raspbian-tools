@@ -134,7 +134,7 @@ chRootImage()
 
 }
 
-isAlreadyChRooted()
+isAlreadyMounted()
 {
 	local imageName=$(basename "$1")
 	local mountPath="${imageName}.mnt"
@@ -147,7 +147,7 @@ isAlreadyChRooted()
 
 }
 
-unChRoot()
+unMount()
 {
 	local imageName=$(basename "$1")
 	local mountPath="${imageName}.mnt"
@@ -169,8 +169,8 @@ else
 			exitWithMessage "This script must be run as root user"
 		fi
 
-		if isAlreadyChRooted "$1"; then
-			unChRoot "$1"
+		if isAlreadyMounted "$1"; then
+			unMount "$1"
 		else
 			chRootImage "$1"
 		fi
