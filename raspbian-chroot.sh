@@ -55,6 +55,17 @@ isImageFile()
 	fi
 }
 
+getPrimaryPartitionDeviceMapName()
+{
+	local imagePath="$1"
+	secondPartitionMap=$(/sbin/kpartx -l "$imagePath" | sed -n 2p | awk -F ' :' ' { print $1 }')
+	if [ $? = 0 ]; then
+		echo $secondPartitionMap && exit 0
+	else
+		exitWithMessage "Failed recognising primary partition of image $imagePath"
+	fi
+}
+
 mountImage()
 {
 	local imagePath="$1"
@@ -62,9 +73,24 @@ mountImage()
 
 	mkdir -p "$mountPath"
 
-	/sbin/kpartx -a -v "$imagePath"
-	sleep 5
-	mount /dev/mapper/loop0p2 "$mountPath"
+	deviceMapName=$(getPrimaryPartitionDeviceMapName "$imagePath")
+	if [ $? = 0 ]; then
+		echo "Primary partition will be mapped to /dev/mapper/$deviceMapName"
+		/sbin/kpartx -a -s "$imagePath"
+		if [ $? = 0 ]; then
+			echo "Mounting image primary partition /dev/mapper/$deviceMapName to $mountPath"
+			mount "/dev/mapper/$deviceMapName" "$mountPath"
+			if [ $? = 0 ]; then
+				true
+			else
+				exitWithMessage "Failed mounting /dev/mapper/$deviceMapName to $mountPath"
+			fi
+		else
+			exitWithMessage "Failed mapping partition table"
+		fi
+	else
+		exitWithMessage "Failed to obtain possible device map of primary partition"
+	fi
 }
 
 
@@ -91,25 +117,28 @@ isArmInterpreterEnabled()
 chRootImage()
 {
 	local imageName=$(basename "$1")
-	local mountPath="${imageName}.mnt"
+	local imagePath=$(realpath "$1")
+	local mountPath=$(realpath "${imageName}.mnt")
 
-	mountImage "$imageName" "$mountPath" >/dev/null 2>&1
+	mountImage "$imagePath" "$mountPath" || exitWithMessage "Failed to mount primary partition of image"
 
-	mount -o bind /dev "$mountPath/dev"
-	mount -o bind /dev/pts "$mountPath/dev/pts"
-	mount -o bind /proc "$mountPath/proc"
-	mount -o bind /sys "$mountPath/sys"
-	mount -o bind /run "$mountPath/run"
+	echo "Mounting system partitions for chrooting"
+	mount -o bind /dev "$mountPath/dev" || exitWithMessage "Failed to mount dev"
+	mount -o bind /dev/pts "$mountPath/dev/pts" || exitWithMessage "Failed to mount pts"
+	mount -o bind /proc "$mountPath/proc" || exitWithMessage "Failed to mount proc"
+	mount -o bind /sys "$mountPath/sys" || exitWithMessage "Failed to mount sys"
+	mount -o bind /run "$mountPath/run" || exitWithMessage "Failed to mount run"
 
-	# Disable everything in /etc/ld.so.preload
+	echo "Disabling everything in /etc/ld.so.preload"
 	sed -i 's/^\([^#]\)/#\1/g' "$mountPath/etc/ld.so.preload"
 
-	# sets up the interfaces - works by default
+	echo "Setting up network interfaces - TODO"
 	#cp /etc/network/interfaces "$mountPath/etc/network/interfaces"
 
-	# makes networking actually work
+	echo "Copying resolve.conf"
 	cp /etc/resolv.conf "$mountPath/etc/resolv.conf"
 
+	echo "Enabling arm intepreter"
 	if isArmInterpreterInstalled; then
 		if ! isArmInterpreterEnabled; then
 			echo 1 >/proc/sys/fs/binfmt_misc/arm
@@ -120,18 +149,18 @@ chRootImage()
 		set -e
 	fi
 
-
+	echo "Copying Binary format files"
 	binFormatFile=$(cat /proc/sys/fs/binfmt_misc/arm | grep interpreter | cut -c 13-)
 	if [ $? = "0" ] && [ -f "$binFormatFile" ]; then
-		echo "Copying Binary format files"
-		cp "$binFormatFile" "${mountPath}/usr/bin/"
-		cp "/usr/bin/qemu-arm" "${mountPath}/usr/bin/"
+		cp "$binFormatFile" "${mountPath}/usr/bin/" && \
+		cp "/usr/bin/qemu-arm" "${mountPath}/usr/bin/" || \
+		exitWithMessage "Failed to copy qemu arm interpreters"
+
+		echo "Start Chroot"
+		chroot "$mountPath"
 	else
 		exitWithMessage "Failed setting Binary format for architecture, cannot chroot"
 	fi
-
-	chroot "$mountPath"
-
 }
 
 isAlreadyMounted()
@@ -147,18 +176,41 @@ isAlreadyMounted()
 
 }
 
+setIfsToNewLine()
+{
+IFS="
+"
+}
+
 unMount()
 {
-	local imageName=$(basename "$1")
-	local mountPath="${imageName}.mnt"
+	local imagePath=$(realpath "$1")
+	local mountPath="${imagePath}.mnt"
 
-	umount -l "$mountPath/dev/pts"
-	umount -l "$mountPath/dev"
-	umount -l "$mountPath/proc"
-	umount -l "$mountPath/sys"
-	umount -l "$mountPath/run"
-	umount -l "$mountPath"
-	kpartx -d -v "$imageName"
+	setIfsToNewLine
+
+	for mounted in $(mount | grep "$mountPath")
+	do
+	{
+		unMountPath=$(echo "$mounted" | awk -F ' ' '{ print $3 }')
+		if [ "$unMountPath" != "$mountPath" ]; then
+			set +e
+			testMount=$(mount | grep "$unMountPath")
+			if [ $? = 0 ]; then
+				set -e
+				echo "Un-mounting $unMountPath"
+				umount -l "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
+			fi
+		fi
+	}
+	done;
+	echo "Un-mounting $mountPath"
+	umount -l "$mountPath" || exitWithMessage "Failed to un-mount $mountPath"
+
+	echo "Un-mapping primary partition of image $imagePath"
+	kpartx -d -v "$imagePath" || exitWithMessage "Failed to un-map image Primary partition"
+
+	echo "Done" && exit 0
 }
 
 if [ "$#" -ne 1 ]; then
