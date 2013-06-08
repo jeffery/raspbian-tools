@@ -69,17 +69,6 @@ isImagePartitionsMapped()
 	fi
 }
 
-getPrimaryPartitionDeviceMapName()
-{
-	local imagePath="$1"
-	secondPartitionMap=$(/sbin/kpartx -l "$imagePath" | sed -n 2p | awk -F ' :' ' { print $1 }')
-	if [ $? = 0 ]; then
-		echo "$secondPartitionMap" && exit 0
-	else
-		exitWithMessage "Failed recognising primary partition of image $imagePath"
-	fi
-}
-
 getMappedPartitionLoopDeviceName()
 {
 	local imagePath="$1"
@@ -95,23 +84,24 @@ unMapImagePartitions()
 	/sbin/kpartx -d "$mappedLoopDevice" && \
 	losetup -d "$mappedLoopDevice" || \
 	exitWithMessage "Failed to un-map device $mappedLoopDevice"
-
 }
 
 mountImage()
 {
 	local imagePath="$1"
 	local mountPath="$2"
+	local deviceMapName
 
 	mkdir -p "$mountPath"
 
 	if isImagePartitionsMapped "$imagePath"; then
-		mappedLoopDevice=$(getMappedPartitionLoopDeviceName "$imagePath")
+		local mappedLoopDevice=$(getMappedPartitionLoopDeviceName "$imagePath")
 		echo "The partitions for image ($imagePath) are already mapped to $mappedLoopDevice"
 		fdisk -l "$mappedLoopDevice" && echo
 		deviceMapName=$(basename "${mappedLoopDevice}p2")
 	else
-		deviceMapName=$(getPrimaryPartitionDeviceMapName "$imagePath")
+		local mappableLoopDevice=$(losetup -f)
+		deviceMapName=$(basename "${mappableLoopDevice}p2")
 		if [ $? = 0 ]; then
 			echo "Primary partition will be mapped to /dev/mapper/$deviceMapName"
 			/sbin/kpartx -as "$imagePath"
@@ -215,12 +205,18 @@ isAlreadyMounted()
 
 }
 
+killQEmuArmProcess()
+{
+	mountPath="$1"
+	$(kill $(lsof +f -- /proc | grep "$mountPath" | awk -F ' ' '{ print $2 }'))
+}
+
 unMount()
 {
 	local imagePath=$(realpath "$1")
 	local mountPath="${imagePath}.mnt"
 
-	for mounted in dev/pts dev proc sys run
+	for mounted in run sys dev/pts dev proc
 	do
 	{
 		unMountPath="$mountPath/$mounted"
@@ -229,7 +225,7 @@ unMount()
 		if [ $? = 0 ]; then
 			set -e
 			echo "Un-mounting $unMountPath"
-			umount -d "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
+			umount "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
 		fi
 	}
 	done;
