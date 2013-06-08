@@ -215,34 +215,25 @@ isAlreadyMounted()
 
 }
 
-setIfsToNewLine()
-{
-IFS="
-"
-}
-
 unMount()
 {
 	local imagePath=$(realpath "$1")
 	local mountPath="${imagePath}.mnt"
 
-	setIfsToNewLine
-
-	for mounted in $(mount | grep "$mountPath")
+	for mounted in dev/pts dev proc sys run
 	do
 	{
-		unMountPath=$(echo "$mounted" | awk -F ' ' '{ print $3 }')
-		if [ "$unMountPath" != "$mountPath" ]; then
-			set +e
-			testMount=$(mount | grep "$unMountPath")
-			if [ $? = 0 ]; then
-				set -e
-				echo "Un-mounting $unMountPath"
-				umount -d "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
-			fi
+		unMountPath="$mountPath/$mounted"
+		set +e
+		testMount=$(mount | grep "$unMountPath")
+		if [ $? = 0 ]; then
+			set -e
+			echo "Un-mounting $unMountPath"
+			umount -d "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
 		fi
 	}
 	done;
+
 	echo "Un-mounting $mountPath"
 	umount -d "$mountPath" || exitWithMessage "Failed to un-mount $mountPath"
 
@@ -261,7 +252,7 @@ else
 
 		if isAlreadyMounted "$1"; then
 			unMount "$1"
-		elif isImagePartitionsMapped "$i"; then
+		elif isImagePartitionsMapped "$1"; then
 			unMapImagePartitions "$1"
 		else
 			chRootImage "$1"
