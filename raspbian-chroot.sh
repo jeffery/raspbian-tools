@@ -55,15 +55,47 @@ isImageFile()
 	fi
 }
 
+
+isImagePartitionsMapped()
+{
+	local imagePath="$1"
+	count=$(losetup -a | grep "$imagePath" | wc -l)
+	if [ "$count" -gt "1" ]; then
+		exitWithMessage "More than one partition mapping setup for this image. Aborting operation"
+	elif [ "$count" -eq "1" ]; then
+		true
+	else
+		false
+	fi
+}
+
 getPrimaryPartitionDeviceMapName()
 {
 	local imagePath="$1"
 	secondPartitionMap=$(/sbin/kpartx -l "$imagePath" | sed -n 2p | awk -F ' :' ' { print $1 }')
 	if [ $? = 0 ]; then
-		echo $secondPartitionMap && exit 0
+		echo "$secondPartitionMap" && exit 0
 	else
 		exitWithMessage "Failed recognising primary partition of image $imagePath"
 	fi
+}
+
+getMappedPartitionLoopDeviceName()
+{
+	local imagePath="$1"
+	losetup -a | grep "$imagePath" | awk -F ':' '{ print $1 }'
+}
+
+unMapImagePartitions()
+{
+	local imagePath=$(realpath "$1")
+	local mappedLoopDevice=$(getMappedPartitionLoopDeviceName "$imagePath")
+
+	echo "Un-mapping $mappedLoopDevice for image $imagePath"
+	/sbin/kpartx -d "$mappedLoopDevice" && \
+	losetup -d "$mappedLoopDevice" || \
+	exitWithMessage "Failed to un-map device $mappedLoopDevice"
+
 }
 
 mountImage()
@@ -73,23 +105,31 @@ mountImage()
 
 	mkdir -p "$mountPath"
 
-	deviceMapName=$(getPrimaryPartitionDeviceMapName "$imagePath")
-	if [ $? = 0 ]; then
-		echo "Primary partition will be mapped to /dev/mapper/$deviceMapName"
-		/sbin/kpartx -a -s "$imagePath"
+	if isImagePartitionsMapped "$imagePath"; then
+		mappedLoopDevice=$(getMappedPartitionLoopDeviceName "$imagePath")
+		echo "The partitions for image ($imagePath) are already mapped to $mappedLoopDevice"
+		fdisk -l "$mappedLoopDevice" && echo
+		deviceMapName=$(basename "${mappedLoopDevice}p2")
+	else
+		deviceMapName=$(getPrimaryPartitionDeviceMapName "$imagePath")
 		if [ $? = 0 ]; then
-			echo "Mounting image primary partition /dev/mapper/$deviceMapName to $mountPath"
-			mount "/dev/mapper/$deviceMapName" "$mountPath"
-			if [ $? = 0 ]; then
-				true
-			else
-				exitWithMessage "Failed mounting /dev/mapper/$deviceMapName to $mountPath"
-			fi
+			echo "Primary partition will be mapped to /dev/mapper/$deviceMapName"
+			/sbin/kpartx -as "$imagePath"
 		else
-			exitWithMessage "Failed mapping partition table"
+			exitWithMessage "Failed to obtain possible device map of primary partition"
+		fi
+	fi
+
+	if [ -b $(realpath "/dev/mapper/$deviceMapName") ]; then
+		echo "Mounting image primary partition /dev/mapper/$deviceMapName to $mountPath"
+		mount "/dev/mapper/$deviceMapName" "$mountPath"
+		if [ $? = 0 ]; then
+			true
+		else
+			exitWithMessage "Failed mounting /dev/mapper/$deviceMapName to $mountPath"
 		fi
 	else
-		exitWithMessage "Failed to obtain possible device map of primary partition"
+		exitWithMessage "Failed mapping partition table"
 	fi
 }
 
@@ -116,9 +156,8 @@ isArmInterpreterEnabled()
 
 chRootImage()
 {
-	local imageName=$(basename "$1")
 	local imagePath=$(realpath "$1")
-	local mountPath=$(realpath "${imageName}.mnt")
+	local mountPath="${imagePath}.mnt"
 
 	mountImage "$imagePath" "$mountPath" || exitWithMessage "Failed to mount primary partition of image"
 
@@ -165,7 +204,7 @@ chRootImage()
 
 isAlreadyMounted()
 {
-	local imageName=$(basename "$1")
+	local imageName=$(realpath "$1")
 	local mountPath="${imageName}.mnt"
 
 	if [ $(mount | grep "$mountPath" | wc -l ) = 0 ]; then
@@ -199,16 +238,15 @@ unMount()
 			if [ $? = 0 ]; then
 				set -e
 				echo "Un-mounting $unMountPath"
-				umount -l "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
+				umount -d "$unMountPath" || exitWithMessage "Failed to un-mount $unMountPath"
 			fi
 		fi
 	}
 	done;
 	echo "Un-mounting $mountPath"
-	umount -l "$mountPath" || exitWithMessage "Failed to un-mount $mountPath"
+	umount -d "$mountPath" || exitWithMessage "Failed to un-mount $mountPath"
 
-	echo "Un-mapping primary partition of image $imagePath"
-	kpartx -d -v "$imagePath" || exitWithMessage "Failed to un-map image Primary partition"
+	unMapImagePartitions "$imagePath"
 
 	echo "Done" && exit 0
 }
@@ -223,6 +261,8 @@ else
 
 		if isAlreadyMounted "$1"; then
 			unMount "$1"
+		elif isImagePartitionsMapped "$i"; then
+			unMapImagePartitions "$1"
 		else
 			chRootImage "$1"
 		fi
