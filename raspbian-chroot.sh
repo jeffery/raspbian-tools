@@ -230,7 +230,7 @@ unMount()
 	}
 	done;
 
-	echo "Uninstalling Qemu binaries"
+	echo "Un-installing Qemu binaries"
 	rm -f "$mountPath/usr/bin/qemu-arm"* || exitWithMessage "Could not uninstall qemu-arm binaries"
 
 	echo "Un-mounting $mountPath"
