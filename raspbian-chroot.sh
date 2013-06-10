@@ -181,9 +181,9 @@ chRootImage()
 	echo "Copying Binary format files"
 	binFormatFile=$(cat /proc/sys/fs/binfmt_misc/arm | grep interpreter | cut -c 13-)
 	if [ $? = "0" ] && [ -f "$binFormatFile" ]; then
-		cp "$binFormatFile" "${mountPath}/usr/bin/" && \
-		cp "/usr/bin/qemu-arm" "${mountPath}/usr/bin/" || \
-		exitWithMessage "Failed to copy qemu arm interpreters"
+		cp "$binFormatFile" "${mountPath}/usr/bin/" \
+		&& cp "/usr/bin/qemu-arm" "${mountPath}/usr/bin/" \
+		|| exitWithMessage "Failed to copy qemu arm interpreters"
 
 		echo "Start Chroot"
 		chroot "$mountPath"
@@ -229,6 +229,9 @@ unMount()
 		fi
 	}
 	done;
+
+	echo "Uninstalling Qemu binaries"
+	rm -f "$mountPath/usr/bin/qemu-arm"* || exitWithMessage "Could not uninstall qemu-arm binaries"
 
 	echo "Un-mounting $mountPath"
 	umount -d "$mountPath" || exitWithMessage "Failed to un-mount $mountPath"
