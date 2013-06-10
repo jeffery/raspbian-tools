@@ -153,9 +153,9 @@ chRootImage()
 
 	echo "Mounting system partitions for chrooting"
 	mount -o bind /dev "$mountPath/dev" || exitWithMessage "Failed to mount dev"
-	mount -o bind /dev/pts "$mountPath/dev/pts" || exitWithMessage "Failed to mount pts"
-	mount -o bind /proc "$mountPath/proc" || exitWithMessage "Failed to mount proc"
-	mount -o bind /sys "$mountPath/sys" || exitWithMessage "Failed to mount sys"
+	mount -t devpts devpts "$mountPath/dev/pts" || exitWithMessage "Failed to mount pts"
+	mount -t proc proc "$mountPath/proc" || exitWithMessage "Failed to mount proc"
+	mount -t sysfs sysfs "$mountPath/sys" || exitWithMessage "Failed to mount sys"
 	mount -o bind /run "$mountPath/run" || exitWithMessage "Failed to mount run"
 
 	echo "Disabling everything in /etc/ld.so.preload"
@@ -252,6 +252,7 @@ else
 			unMapImagePartitions "$1"
 		else
 			chRootImage "$1"
+			unMount "$1"
 		fi
 	else
 		printUsage "$0"
