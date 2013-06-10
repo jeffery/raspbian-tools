@@ -7,7 +7,7 @@ This is a script to backup your RaspberryPi sd card from a block device. The blo
 card reader. After inserting the SD card into a reader, you can backup the entire RaspberryPi operating system by
 executing:
 
-    ./raspbian-backup /dev/sdd ~/var/raspbian-images
+    ./raspbian-backup /dev/sdd .
 
 The above command is reading the /dev/sdd block device and making a backup of it into the current directory. The script 
 will create the backup image with a date timestamp. e.g. 2013-06-02_22h04m-raspberrypi.img
