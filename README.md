@@ -1,11 +1,14 @@
 # Raspbian Tools
-Scripts to manage a RaspberryPi device which is running Raspbian (http://www.raspbian.org). These scripts have only been tested on openSUSE 12.3 distribution.
+Scripts to manage a RaspberryPi device which is running Raspbian (http://www.raspbian.org). These scripts have only been
+tested on openSUSE 12.3 distribution.
 
 ## raspbian-backup
-This is a script to backup your RaspberryPi sd card from a block device. The block device is usually mounted via an SD card reader. After inserting the SD card into a reader, you can backup the entire RaspberryPi operating system by executing:
+This is a script to backup your RaspberryPi sd card from a block device. The block device is usually mounted via an SD
+card reader. After inserting the SD card into a reader, you can backup the entire RaspberryPi operating system by
+executing:
 
     ./raspbian-backup /dev/sdd ~/var/raspbian-images
-    
+
 The above command is reading the /dev/sdd block device and making a backup of it into the current directory. The script 
 will create the backup image with a date timestamp. e.g. 2013-06-02_22h04m-raspberrypi.img
 
