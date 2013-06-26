@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Raspbian-tools by jeffery</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+
+      <header>
+        <h1>Raspbian-tools</h1>
+        <p>RaspberryPi Device helper scripts</p>
+      </header>
+
+      <div id="banner">
+        <span id="logo"></span>
+
+        <a href="https://github.com/jeffery/raspbian-tools" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/jeffery/raspbian-tools/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/jeffery/raspbian-tools/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
+
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h1>
+<a name="raspbian-tools" class="anchor" href="#raspbian-tools"><span class="octicon octicon-link"></span></a>Raspbian Tools</h1>
+
+<p>Scripts to manage a RaspberryPi device which is running Raspbian (<a href="http://www.raspbian.org">http://www.raspbian.org</a>). These scripts have only been
+tested on openSUSE 12.3 distribution.</p>
+
+<h2>
+<a name="raspbian-backup" class="anchor" href="#raspbian-backup"><span class="octicon octicon-link"></span></a>raspbian-backup</h2>
+
+<p>This is a script to backup your RaspberryPi sd card from a block device. The block device is usually mounted via an SD
+card reader. After inserting the SD card into a reader, you can backup the entire RaspberryPi operating system by
+executing:</p>
+
+<pre><code>./raspbian-backup /dev/sdd .
+</code></pre>
+
+<p>The above command is reading the /dev/sdd block device and making a backup of it into the current directory. The script 
+will create the backup image with a date timestamp. e.g. 2013-06-02_22h04m-raspberrypi.img</p>
+
+<p>In order to know which block device was used for your card reader, you can verify by executing the command:</p>
+
+<pre><code>dmesg
+</code></pre>
+
+<p>Usually you would see some messages from the kernel:</p>
+
+<pre><code>[230998.829647] usb 5-1: new high-speed USB device number 3 using xhci_hcd
+[230998.842124] usb 5-1: New USB device found, idVendor=04cf, idProduct=9920
+[230998.842131] usb 5-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[230998.842135] usb 5-1: Product: CS8819B
+[230998.842138] usb 5-1: Manufacturer: Myson Century, Inc.
+[230998.842141] usb 5-1: SerialNumber: 000100000000
+[230998.873431] Initializing USB Mass Storage driver...
+[230998.873657] scsi12 : usb-storage 5-1:1.0
+[230998.873845] usbcore: registered new interface driver usb-storage
+[230998.873851] USB Mass Storage support registered.
+[230999.874682] scsi 12:0:0:0: Direct-Access     Myson    SD/MMC/MS Reader 1.00 PQ: 0 ANSI: 0 CCS
+[230999.875010] sd 12:0:0:0: Attached scsi generic sg4 type 0
+[230999.875409] sd 12:0:0:0: [sdd] 7862272 512-byte logical blocks: (4.02 GB/3.74 GiB)
+[230999.875638] sd 12:0:0:0: [sdd] Write Protect is off
+[230999.875643] sd 12:0:0:0: [sdd] Mode Sense: 03 00 00 00
+[230999.875874] sd 12:0:0:0: [sdd] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+[230999.879292]  sdd: sdd1 sdd2
+[230999.880714] sd 12:0:0:0: [sdd] Attached SCSI removable disk
+</code></pre>
+
+<h2>
+<a name="raspbian-chroot" class="anchor" href="#raspbian-chroot"><span class="octicon octicon-link"></span></a>raspbian-chroot</h2>
+
+<p>This script helps in creating a chroot environment for your RaspberryPi backup image which has Raspbian installed as the
+Operating System.</p>
+
+<p>It requires package qemu-linux-user and kpartx (or the equivalent for your distro of choice) to be installed. To start 
+the chrooted environment, execute it with the path to an exported Raspbian image:</p>
+
+<pre><code>./raspbian-chroot 2013-06-02_22h04m-raspberrypi.img
+</code></pre>
+      </section>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/jeffery">jeffery</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
