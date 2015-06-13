@@ -44,4 +44,15 @@ It requires package qemu-linux-user and kpartx (or the equivalent for your distr
 the chrooted environment, execute it with the path to an exported Raspbian image:
 
     ./raspbian-chroot 2013-06-02_22h04m-raspberrypi.img
+    
+## raspbian-arm-chroot
+Script that does the same things that the **raspbian-chroot** does but
+with the qemu emulation stripped out since this one is intended to
+run on arm systems. 
 
+Lets say you want to compile for the raspberry pi but you have a more 
+powerful arm machine like the Odroid U3. This script will mount the 
+raspbian image copy its contents to a separate directory and chroot to 
+it. Copying the raspbian image content is itended to not run out of space 
+(which happens if working directly on the rapsbian image) when compiling 
+big projects.
